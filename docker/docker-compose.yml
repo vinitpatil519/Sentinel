@@ -1,0 +1,69 @@
+# Full stack: sensing server (or simulator) + SENTINEL backend + console.
+#
+#   docker compose -f docker/docker-compose.yml up --build
+#   docker compose -f docker/docker-compose.yml --profile sim up --build
+#
+# Port map, chosen so nothing collides on the host:
+#   console        :3000
+#   backend        :8010
+#   RuView UI/API  :3300  (container 3000)
+#   RuView sensing :3301  (container 3001)
+#   CSI ingest     :5005/udp — what the ESP32-S3 nodes send to
+#
+# Inside the network the backend talks to `ruview:3000`; the sensing WebSocket
+# port is derived from it (3000 → 3001), so container ports stay upstream's.
+
+services:
+  ruview:
+    image: ruvnet/wifi-densepose:latest
+    profiles: ["hardware", ""]
+    ports:
+      - "3300:3000"
+      - "3301:3001"
+      - "5005:5005/udp"
+    restart: unless-stopped
+
+  # Scenario simulator, emitting the real upstream wire format. Enable with
+  # `--profile sim` and point the backend at it:
+  #   RUVIEW_URL=http://sim:3000 docker compose --profile sim up
+  sim:
+    profiles: ["sim"]
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    command: >
+      python scripts/ruview_sim.py --scenario ${SCENARIO:-patrol} --port 3001 --loop
+    ports:
+      - "3301:3001"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      # Override to http://sim:3000 when running the simulator profile.
+      RUVIEW_URL: ${RUVIEW_URL:-http://ruview:3000}
+      SENTINEL_DB_PATH: /data/sentinel.db
+    volumes:
+      - sentinel-data:/data
+    ports:
+      - "8010:8010"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        # The browser talks to the backend via the host-mapped port, so this is
+        # a host URL, not a container one.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sentinel-data:

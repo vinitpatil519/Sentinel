@@ -1,0 +1,20 @@
+# RuView sensing server, as a managed container.
+# Optional: `docker run --restart unless-stopped` does the same thing. This exists
+# so the whole stack starts and stops with one systemd target.
+[Unit]
+Description=RuView WiFi sensing server (container)
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/docker rm -f ruview
+ExecStart=/usr/bin/docker run --rm --name ruview \
+    -p 3000:3000 -p 3001:3001 -p 5005:5005/udp \
+    ruvnet/wifi-densepose:latest
+ExecStop=/usr/bin/docker stop ruview
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

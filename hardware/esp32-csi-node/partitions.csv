@@ -1,0 +1,7 @@
+# Single app + NVS. OTA is not used: nodes are flashed over USB during a build
+# session, and a half-applied OTA on an unattended node is a worse failure than
+# walking over with a cable.
+# Name,   Type, SubType, Offset,  Size
+nvs,      data, nvs,     0x9000,  0x6000
+phy_init, data, phy,     0xf000,  0x1000
+factory,  app,  factory, 0x10000, 3M

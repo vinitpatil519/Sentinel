@@ -1,0 +1,94 @@
+states:
+  ASLEEP:
+    min_dwell_s: 30.0
+    emissions:
+      respiration_bpm:
+        mean: 12.1201
+        sd: 1.8
+      rrv_cv:
+        mean: 0.0817
+        sd: 0.045
+      motion_index:
+        mean: 0.5463
+        sd: 3.0
+      burst_rate:
+        mean: 0.3761
+        sd: 0.6531
+      amplitude_cv:
+        mean: 0.1667
+        sd: 0.09
+  RESTING:
+    min_dwell_s: 15.0
+    emissions:
+      respiration_bpm:
+        mean: 14.5489
+        sd: 1.8
+      rrv_cv:
+        mean: 0.129
+        sd: 0.045
+      motion_index:
+        mean: 4.4083
+        sd: 7.0239
+      burst_rate:
+        mean: 0.8637
+        sd: 0.6328
+      amplitude_cv:
+        mean: 0.2277
+        sd: 0.0993
+  ALERT_STILL:
+    min_dwell_s: 10.0
+    emissions:
+      respiration_bpm:
+        mean: 16.1949
+        sd: 2.0314
+      rrv_cv:
+        mean: 0.1789
+        sd: 0.0756
+      motion_index:
+        mean: 5.3128
+        sd: 7.3336
+      burst_rate:
+        mean: 1.5982
+        sd: 0.7823
+      amplitude_cv:
+        mean: 0.3709
+        sd: 0.1255
+  ACTIVE:
+    min_dwell_s: 4.0
+    emissions:
+      respiration_bpm:
+        mean: 17.4638
+        sd: 2.8157
+      rrv_cv:
+        mean: 0.1937
+        sd: 0.0478
+      motion_index:
+        mean: 43.3247
+        sd: 9.9828
+      burst_rate:
+        mean: 2.0909
+        sd: 1.2147
+      amplitude_cv:
+        mean: 0.5269
+        sd: 0.137
+  DISTRESSED:
+    min_dwell_s: 8.0
+    emissions:
+      respiration_bpm:
+        mean: 24.123
+        sd: 3.6462
+      rrv_cv:
+        mean: 0.2123
+        sd: 0.0664
+      motion_index:
+        mean: 12.7247
+        sd: 8.4979
+      burst_rate:
+        mean: 3.1405
+        sd: 1.611
+      amplitude_cv:
+        mean: 0.5188
+        sd: 0.1542
+provenance: fitted from the reference simulation (patrol, sleep, wake, two-person,
+  distress; 32106 frames, seed 7) by scripts/fit_reference_model.py - not calibrated
+  to any physical site

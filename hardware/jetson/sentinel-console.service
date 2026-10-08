@@ -1,0 +1,22 @@
+# SENTINEL console (Next.js, production build).
+#   cd frontend && npm run build     # once, before enabling this
+[Unit]
+Description=SENTINEL operator console
+After=network-online.target sentinel-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sentinel
+WorkingDirectory=/home/sentinel/sentinel/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3100
+# Baked into the client bundle at build time, so a change here needs a rebuild.
+# Use the address a browser on the network will use, not localhost.
+Environment=NEXT_PUBLIC_API_URL=http://localhost:8010
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

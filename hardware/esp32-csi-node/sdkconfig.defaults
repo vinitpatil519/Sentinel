@@ -1,0 +1,39 @@
+# SENTINEL CSI node defaults. Applied on a fresh `idf.py build`; edit with
+# `idf.py menuconfig` if you need to change one.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- CSI ---------------------------------------------------------------------
+# Without this the CSI callback is never compiled in and esp_wifi_set_csi()
+# returns ESP_ERR_NOT_SUPPORTED at runtime.
+CONFIG_ESP_WIFI_CSI_ENABLED=y
+
+# --- Radio timing ------------------------------------------------------------
+# Power save off is enforced in code too; setting it here as well means a node
+# is never briefly asleep between boot and that call.
+CONFIG_ESP_WIFI_PS_NONE=y
+# More RX buffers: the poke rate drives ~100 receive events/s and a short queue
+# drops CSI callbacks under load, which shows up as an uneven sample series.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
+CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y
+
+# --- Console -----------------------------------------------------------------
+# Provisioning is a line-based shell over the UART port used for flashing.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+
+# --- Stability ---------------------------------------------------------------
+# A node is unattended on a charger; a watchdog reboot beats a silent hang that
+# the console reads as "no subject present".
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_INT_WDT=y
+CONFIG_BOOTLOADER_WDT_ENABLE=y
+
+CONFIG_FREERTOS_HZ=1000
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# --- Partitions --------------------------------------------------------------
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

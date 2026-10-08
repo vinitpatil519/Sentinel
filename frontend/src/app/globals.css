@@ -1,0 +1,392 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   SENTINEL console design system.
+
+   The brief is an instrument, not a dashboard: a soldier reads one number and
+   acts on it. Three rules follow, and every token below serves them.
+
+   1. Colour is a signal, never decoration. The interface is greyscale until
+      something means something; the only saturated pixels on screen belong to
+      an advisory, an alert, or live data. A UI that glows everywhere cannot
+      point at anything.
+   2. Data is typeset, not styled. Tabular figures, aligned decimals, units in
+      a lighter weight beside the number. Readings sit in monospace so a
+      changing digit does not reflow the row.
+   3. Structure is hairlines and spacing, not boxes and shadows. 1px dividers at
+      low contrast, an 8px spacing grid, square corners. Depth is reserved for
+      the one surface that floats (the 3-D volume).
+   =========================================================================== */
+
+:root {
+  /* Surfaces: a narrow, deliberately flat range. */
+  --bg-0: #0a0c0f;          /* application background */
+  --bg-1: #0f1318;          /* panel */
+  --bg-2: #141a21;          /* raised row, input, header */
+  --bg-3: #1a222b;          /* hover / selected */
+  --line: #1c242e;          /* hairline */
+  --line-strong: #2a3743;   /* section divider, focus ring */
+
+  /* Text: four steps, enough for hierarchy, few enough to stay consistent. */
+  --text-0: #dde4ec;        /* primary readings */
+  --text-1: #97a4b2;        /* labels, secondary */
+  --text-2: #5f6d7c;        /* tertiary, units, meta */
+  --text-3: #3d4854;        /* disabled, grid lines */
+
+  /* Semantics. Muted on purpose: these are the only colours on screen, so they
+     must stay legible for hours without becoming decorative. */
+  --accent: #3d8bd6;        /* interactive, live data, selection */
+  --accent-dim: #21496e;
+  --ok: #4e9e6a;
+  --warn: #c9922e;
+  --alert: #c4632f;
+  --deny: #b93a36;
+  --unknown: #6b7684;
+
+  /* Advisory decisions map onto the semantics above; named separately so the
+     mapping is stated once and can be read off in one place. */
+  --advisory-approach: var(--ok);
+  --advisory-caution: var(--warn);
+  --advisory-hold: var(--alert);
+  --advisory-deny: var(--deny);
+  --advisory-unknown: var(--unknown);
+
+  /* Behavioural states, ordered by arousal. */
+  --state-asleep: #4a7fb5;
+  --state-resting: #4e9e6a;
+  --state-alert: #c9922e;
+  --state-active: #c4632f;
+  --state-distressed: #b93a36;
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+
+  --header-h: 46px;
+  --banner-h: 22px;
+  --rail-w: 60px;
+  --status-h: 26px;
+}
+
+* {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;              /* the console owns the viewport */
+}
+
+/* A single faint plane grid over the app background. One texture, low contrast:
+   enough to read as an instrument surface, not enough to compete with data. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  z-index: 0;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--text-0);
+}
+
+/* ---- scrollbars: present but quiet -------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- typography primitives ---------------------------------------------- */
+
+.label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.label-strong {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-1);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--text-0);
+}
+
+.unit {
+  font-size: 0.62em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  margin-left: 0.35em;
+}
+
+/* ---- panels -------------------------------------------------------------- */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  overflow: auto;
+}
+
+.panel-body-flush {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Corner ticks: a small, cheap instrument cue on the primary surface only. */
+.corner-ticks::before,
+.corner-ticks::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: var(--line-strong);
+  border-style: solid;
+  pointer-events: none;
+}
+.corner-ticks::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+.corner-ticks::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+/* ---- rows, tables -------------------------------------------------------- */
+
+.row-hover:hover {
+  background: var(--bg-2);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-2);
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover td {
+  background: var(--bg-2);
+  color: var(--text-0);
+}
+
+.data-table td.num {
+  font-family: var(--font-mono);
+  text-align: right;
+  color: var(--text-0);
+}
+
+/* ---- controls ------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+
+.btn:hover {
+  background: var(--bg-3);
+  color: var(--text-0);
+  border-color: var(--text-3);
+}
+
+.btn[data-active="true"] {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  flex: none;
+}
+
+/* ---- meters -------------------------------------------------------------- */
+
+.meter {
+  position: relative;
+  height: 4px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: currentColor;
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A hatched fill marks a value the system does not vouch for. Distinguishable
+   without colour, which matters when the reason for the hatch is low
+   confidence rather than a category. */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--text-3) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+/* ---- motion -------------------------------------------------------------- */
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pulse {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes deny-edge {
+  0%, 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deny) 55%, transparent); }
+  50% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deny) 15%, transparent); }
+}
+.deny-edge {
+  animation: deny-edge 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .deny-edge {
+    animation: none;
+  }
+  .meter-fill {
+    transition: none;
+  }
+}
+
+/* ---- focus --------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}

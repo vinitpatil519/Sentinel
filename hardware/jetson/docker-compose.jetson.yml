@@ -1,0 +1,32 @@
+# Jetson / ARM64 override.
+#
+#   docker compose -f docker/docker-compose.yml \
+#                  -f hardware/jetson/docker-compose.jetson.yml up -d --build
+#
+# What it changes:
+#   - exposes UDP 5005 so the nodes can reach the sensing server
+#   - binds the console on 3100, leaving 3000 to RuView's own UI
+#   - points browsers at the Jetson by hostname rather than localhost
+#   - keeps the session database on the host, outside the container lifecycle
+services:
+  ruview:
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "5005:5005/udp"
+
+  backend:
+    environment:
+      RUVIEW_URL: http://ruview:3000
+      SENTINEL_DB_PATH: /data/sentinel.db
+    volumes:
+      - /home/sentinel/sentinel-data:/data
+
+  frontend:
+    build:
+      args:
+        # Replace with the Jetson's address or hostname: this is compiled into the
+        # client bundle, and `localhost` would mean the viewer's own machine.
+        NEXT_PUBLIC_API_URL: http://sentinel.local:8010
+    ports:
+      - "3100:3000"

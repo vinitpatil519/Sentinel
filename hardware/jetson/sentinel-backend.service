@@ -1,0 +1,30 @@
+# SENTINEL backend. Install:
+#   sudo cp hardware/jetson/*.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now sentinel-backend
+#
+# Adjust WorkingDirectory and User if the repo is not at /home/sentinel/sentinel.
+[Unit]
+Description=SENTINEL backend (FastAPI)
+Documentation=file:///home/sentinel/sentinel/docs/architecture.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sentinel
+WorkingDirectory=/home/sentinel/sentinel/backend
+# The sensing server's HTTP base. The sensing WebSocket port is derived from it
+# (3000 -> 3001), so this is the only URL to set.
+Environment=RUVIEW_URL=http://localhost:3000
+Environment=SENTINEL_DB_PATH=/home/sentinel/sentinel-data/sentinel.db
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/sentinel/sentinel/backend/.venv/bin/uvicorn sentinel.main:app \
+    --host 0.0.0.0 --port 8010
+Restart=always
+RestartSec=3
+# A session in progress is research data; give the DB time to close cleanly.
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

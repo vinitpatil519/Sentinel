@@ -1,0 +1,37 @@
+# SENTINEL default configuration.
+# Override locally with config/local.yaml (git-ignored) or SENTINEL_* env vars.
+
+sensors:
+  - type: ruview_rf
+    name: ruview_rf
+    enabled: true
+    # url: http://localhost:3000     # Docker image; native build uses :8080
+    # ws_url: ws://localhost:3001/ws/sensing
+    # token: <bearer, only when the sensing server has auth enabled>
+
+# Physical sensing volume in metres. Set these to the real room: the console
+# draws the deployment from them, and the field grid is mapped onto them.
+geometry:
+  extent: [6.0, 2.5, 6.0]
+  origin: [0.0, 0.0, 0.0]
+  wall_axis: x
+  wall_offset_m: -1.5
+
+# With more than one subject, attribute vitals by nearest node ("auto") or
+# refuse to attribute them at all ("strict"). See docs/assessment-model.md.
+vitals_attribution: auto
+
+# Approach-advisory thresholds. Arousal is the posterior-weighted reflex
+# readiness index in [0,1]; see docs/assessment-model.md §4.
+advisory:
+  approach_max_arousal: 0.25
+  caution_max_arousal: 0.45
+  hold_max_arousal: 0.70
+  min_evidence: 0.35
+  approach_min_dwell_s: 45.0
+  de_escalation_dwell_s: 12.0
+  recent_burst_s: 10.0
+
+# state_model: loaded from config/state_model.yaml when present, which is what
+# scripts/calibrate_states.py writes. Absent → literature-seeded defaults in
+# core/assessment.py.
