@@ -57,10 +57,15 @@ function useCanvas(
   return ref;
 }
 
-const GRID = "#1c242e";
-const AXIS = "#2a3743";
+const GRID = "#111b1f";
+const GRID_MAJOR = "#18272d";
+const AXIS = "#24363e";
 
-/** Respiration waveform: the chest-motion trace, normalised to ±1. */
+/**
+ * Respiration waveform: the chest-motion trace, normalised to ±1, drawn on an
+ * oscilloscope graticule — 10 major divisions across, 4 down, with minor ticks
+ * on the centre axes — so its period can be read against the grid.
+ */
 export function WaveTrace({
   data,
   color = "var(--accent)",
@@ -80,9 +85,18 @@ export function WaveTrace({
   const ref = useCanvas(
     (ctx, w, h) => {
       const mid = h / 2;
+      ctx.fillStyle = "#060a0b";
+      ctx.fillRect(0, 0, w, h);
       if (grid) {
-        ctx.strokeStyle = GRID;
         ctx.lineWidth = 1;
+        ctx.strokeStyle = GRID;
+        for (let i = 1; i < 10; i++) {
+          const x = Math.round((w / 10) * i) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
         for (let i = 1; i < 4; i++) {
           const y = Math.round((h / 4) * i) + 0.5;
           ctx.beginPath();
@@ -90,14 +104,18 @@ export function WaveTrace({
           ctx.lineTo(w, y);
           ctx.stroke();
         }
-        // Vertical ticks every ~10% of the window.
-        for (let i = 1; i < 10; i++) {
-          const x = Math.round((w / 10) * i) + 0.5;
+        // Minor ticks on the centre axis, five per division.
+        ctx.strokeStyle = GRID_MAJOR;
+        for (let i = 1; i < 50; i++) {
+          const x = Math.round((w / 50) * i) + 0.5;
+          const len = i % 5 === 0 ? 5 : 3;
           ctx.beginPath();
-          ctx.moveTo(x, h - 4);
-          ctx.lineTo(x, h);
+          ctx.moveTo(x, mid - len);
+          ctx.lineTo(x, mid + len);
           ctx.stroke();
         }
+        ctx.strokeStyle = GRID_MAJOR;
+        ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
       }
       ctx.strokeStyle = AXIS;
       ctx.beginPath();
@@ -106,14 +124,14 @@ export function WaveTrace({
       ctx.stroke();
 
       if (data.length < 2) {
-        ctx.fillStyle = "#3d4854";
+        ctx.fillStyle = "#3a474d";
         ctx.font = "10px ui-monospace, monospace";
-        ctx.fillText("NO RESPIRATION WAVEFORM", 8, mid - 6);
+        ctx.fillText("NO RESPIRATION WAVEFORM", 10, mid - 8);
         return;
       }
 
       const step = w / (data.length - 1);
-      const amp = mid - 6;
+      const amp = mid - 8;
       const path = new Path2D();
       data.forEach((v, i) => {
         const x = i * step;
@@ -128,26 +146,40 @@ export function WaveTrace({
         area.lineTo(0, mid);
         area.closePath();
         const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, withAlpha(stroke, 0.22));
-        g.addColorStop(1, withAlpha(stroke, 0.02));
+        g.addColorStop(0, withAlpha(stroke, 0.2));
+        g.addColorStop(0.5, withAlpha(stroke, 0.04));
+        g.addColorStop(1, withAlpha(stroke, 0.2));
         ctx.fillStyle = g;
         ctx.fill(area);
       }
 
+      // Phosphor: a wide faint pass under a sharp one.
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = withAlpha(stroke, 0.25);
+      ctx.lineWidth = 4;
+      ctx.stroke(path);
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.5;
-      ctx.lineJoin = "round";
       ctx.stroke(path);
 
-      // Leading-edge marker: the "now" end of the trace.
+      // Leading edge: the "now" end of the trace.
       const lastY = mid - Math.max(-1, Math.min(1, data[data.length - 1])) * amp;
-      ctx.fillStyle = stroke;
-      ctx.fillRect(w - 3, lastY - 1.5, 3, 3);
+      ctx.fillStyle = withAlpha(stroke, 0.25);
+      ctx.beginPath();
+      ctx.arc(w - 4, lastY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e2e8e6";
+      ctx.beginPath();
+      ctx.arc(w - 4, lastY, 2.2, 0, Math.PI * 2);
+      ctx.fill();
 
+      ctx.font = "9px ui-monospace, monospace";
+      ctx.fillStyle = "#3a474d";
+      ctx.fillText("+1", 4, 11);
+      ctx.fillText("-1", 4, h - 4);
       if (label) {
-        ctx.fillStyle = "#5f6d7c";
-        ctx.font = "9px ui-sans-serif, system-ui";
-        ctx.fillText(label, 6, 12);
+        ctx.fillStyle = "#66757a";
+        ctx.fillText(label, 22, 11);
       }
     },
     [data, stroke, grid, fill, label],
@@ -169,6 +201,7 @@ export function Sparkline({
   max,
   threshold,
   fill = false,
+  scale = false,
 }: {
   data: number[];
   color?: string;
@@ -177,28 +210,55 @@ export function Sparkline({
   max?: number;
   threshold?: number;
   fill?: boolean;
+  /** Draw a graticule and print the range at the right edge. */
+  scale?: boolean;
 }) {
   const stroke = resolveColor(color);
   const ref = useCanvas(
     (ctx, w, h) => {
+      if (scale) {
+        ctx.strokeStyle = GRID;
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) {
+          const y = Math.round((h / 4) * i) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+        for (let i = 1; i < 12; i++) {
+          const x = Math.round((w / 12) * i) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(x, h - 3);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = GRID_MAJOR;
+        ctx.beginPath();
+        ctx.moveTo(0, h - 0.5);
+        ctx.lineTo(w, h - 0.5);
+        ctx.stroke();
+      }
       if (data.length < 2) {
-        ctx.fillStyle = "#3d4854";
+        ctx.fillStyle = "#3a474d";
         ctx.font = "9px ui-monospace, monospace";
-        ctx.fillText("--", 2, h / 2 + 3);
+        ctx.fillText(scale ? "NO SERIES" : "--", 4, h / 2 + 3);
         return;
       }
       const lo = min ?? Math.min(...data);
       const hi = max ?? Math.max(...data);
       const span = hi - lo || 1;
-      const y = (v: number) => h - 2 - ((v - lo) / span) * (h - 4);
-      const step = w / (data.length - 1);
+      const pad = scale ? 6 : 2;
+      const right = scale ? w - 34 : w;
+      const y = (v: number) => h - pad - ((v - lo) / span) * (h - pad * 2);
+      const step = right / (data.length - 1);
 
       if (threshold !== undefined) {
-        ctx.strokeStyle = AXIS;
-        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = withAlpha(stroke, 0.5);
+        ctx.setLineDash([3, 3]);
         ctx.beginPath();
-        ctx.moveTo(0, y(threshold));
-        ctx.lineTo(w, y(threshold));
+        ctx.moveTo(0, Math.round(y(threshold)) + 0.5);
+        ctx.lineTo(right, Math.round(y(threshold)) + 0.5);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -211,17 +271,38 @@ export function Sparkline({
       });
       if (fill) {
         const area = new Path2D(path);
-        area.lineTo(w, h);
+        area.lineTo(right, h);
         area.lineTo(0, h);
         area.closePath();
-        ctx.fillStyle = withAlpha(stroke, 0.16);
+        const g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, withAlpha(stroke, 0.22));
+        g.addColorStop(1, withAlpha(stroke, 0.02));
+        ctx.fillStyle = g;
         ctx.fill(area);
       }
       ctx.strokeStyle = stroke;
-      ctx.lineWidth = 1.25;
+      ctx.lineWidth = 1.4;
+      ctx.lineJoin = "round";
       ctx.stroke(path);
+
+      const lastY = y(data[data.length - 1]);
+      ctx.fillStyle = stroke;
+      ctx.fillRect(right - 2, lastY - 2, 4, 4);
+
+      if (scale) {
+        ctx.font = "9px ui-monospace, monospace";
+        ctx.fillStyle = "#66757a";
+        ctx.textAlign = "right";
+        const valueY = Math.max(10, Math.min(h - 4, lastY + 3));
+        // Range labels give way to the live value when they would collide.
+        if (Math.abs(valueY - 10) > 10) ctx.fillText(fmt(hi), w - 2, 10);
+        if (Math.abs(valueY - (h - 4)) > 10) ctx.fillText(fmt(lo), w - 2, h - 4);
+        ctx.fillStyle = stroke;
+        ctx.fillText(fmt(data[data.length - 1]), w - 2, valueY);
+        ctx.textAlign = "left";
+      }
     },
-    [data, stroke, min, max, threshold, fill],
+    [data, stroke, min, max, threshold, fill, scale],
   );
 
   return (
@@ -229,6 +310,12 @@ export function Sparkline({
       <canvas ref={ref} />
     </div>
   );
+}
+
+function fmt(v: number): string {
+  const a = Math.abs(v);
+  if (a !== 0 && (a < 0.01 || a >= 10000)) return v.toExponential(1);
+  return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
 }
 
 /** Per-subcarrier amplitude profile — the raw CSI shape, as bars. */
@@ -254,11 +341,21 @@ export function BarProfile({
       const hi = Math.max(...data);
       const span = hi - lo || 1;
       const bw = w / data.length;
+      ctx.strokeStyle = GRID;
+      for (let i = 1; i < 4; i++) {
+        const y = Math.round((h / 4) * i) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
       data.forEach((v, i) => {
         const frac = (v - lo) / span;
         const barH = Math.max(1, frac * (h - 2));
-        ctx.fillStyle = withAlpha(fillColor, 0.35 + frac * 0.6);
+        ctx.fillStyle = withAlpha(fillColor, 0.25 + frac * 0.55);
         ctx.fillRect(i * bw, h - barH, Math.max(1, bw - 1), barH);
+        ctx.fillStyle = withAlpha(fillColor, 0.95);
+        ctx.fillRect(i * bw, h - barH, Math.max(1, bw - 1), 1.5);
       });
     },
     [data, fillColor],
@@ -287,7 +384,7 @@ export function StateBand({
   const ref = useCanvas(
     (ctx, w, h) => {
       if (!resolved.length) {
-        ctx.fillStyle = "#141a21";
+        ctx.fillStyle = "#0d1215";
         ctx.fillRect(0, 0, w, h);
         return;
       }
@@ -299,7 +396,7 @@ export function StateBand({
           ctx.fillStyle = seg.color;
           ctx.fillRect(x, 0, Math.ceil(sw), h);
         } else {
-          ctx.fillStyle = "#1a222b";
+          ctx.fillStyle = "#131a1e";
           ctx.fillRect(x, 0, Math.ceil(sw), h);
         }
         x += sw;
@@ -322,12 +419,12 @@ const colorCache = new Map<string, string>();
 /** Resolve a CSS custom property to a concrete colour for canvas use. */
 function resolveColor(color: string): string {
   if (!color.startsWith("var(")) return color;
-  if (typeof window === "undefined") return "#3d8bd6";
+  if (typeof window === "undefined") return "#5cd0e6";
   const cached = colorCache.get(color);
   if (cached) return cached;
   const name = color.slice(4, -1).trim();
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const resolved = value || "#3d8bd6";
+  const resolved = value || "#5cd0e6";
   colorCache.set(color, resolved);
   return resolved;
 }

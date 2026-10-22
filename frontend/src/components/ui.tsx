@@ -2,8 +2,9 @@
 
 /**
  * Console primitives. Everything on screen is built from these, so the rules
- * live here once: labels are uppercase and quiet, readings are monospace and
- * loud, an unknown value is `--` and is never dressed up as a number.
+ * live here once: labels are condensed, uppercase and quiet, readings are
+ * monospace and loud, an unknown value is `--` and is never dressed up as a
+ * number.
  */
 
 import type { CSSProperties, ReactNode } from "react";
@@ -13,32 +14,56 @@ import { DASH } from "@/lib/format";
 
 export function Panel({
   title,
+  code,
   right,
   children,
   flush,
   className = "",
   accent,
   ticks,
+  bodyClassName = "",
 }: {
   title?: string;
+  /** Short grid reference shown before the title, e.g. "A1". */
+  code?: string;
   right?: ReactNode;
   children: ReactNode;
   flush?: boolean;
   className?: string;
-  /** Colour of the 2px rule under the header — used to carry a status. */
+  /** Status colour: lights the frame corners and rules the header. */
   accent?: string;
+  /** Marks the screen's primary surface by lighting its corners in the accent. */
   ticks?: boolean;
+  bodyClassName?: string;
 }) {
+  const style = accent ? ({ "--corner": accent } as CSSProperties) : undefined;
   return (
-    <section className={`panel ${ticks ? "corner-ticks" : ""} ${className}`}>
-      {title !== undefined && (
-        <header className="panel-head" style={accent ? { boxShadow: `inset 0 -2px 0 ${accent}` } : undefined}>
-          <span className="label-strong">{title}</span>
-          {right !== undefined && <div className="ml-auto flex items-center gap-2">{right}</div>}
-        </header>
-      )}
-      <div className={flush ? "panel-body-flush" : "panel-body"}>{children}</div>
+    <section className={`panel ${ticks ? "corner-ticks" : ""} ${className}`} style={style}>
+      <div className="panel-frame">
+        {title !== undefined && (
+          <header
+            className="panel-head"
+            style={accent ? { boxShadow: `inset 0 -2px 0 ${accent}` } : undefined}
+          >
+            {code && <span className="panel-code">{code}</span>}
+            <span className="panel-title">{title}</span>
+            {right !== undefined && <div className="ml-auto flex flex-none items-center gap-2">{right}</div>}
+          </header>
+        )}
+        <div className={`${flush ? "panel-body-flush" : "panel-body"} ${bodyClassName}`}>{children}</div>
+      </div>
     </section>
+  );
+}
+
+/** Label with a rule running off it to the right; optional trailing content. */
+export function Section({ children, right, className = "" }: { children: ReactNode; right?: ReactNode; className?: string }) {
+  return (
+    <div className={`mb-2 flex items-center gap-2.5 ${className}`}>
+      <span className="label flex-none">{children}</span>
+      <span className="h-px flex-1 bg-gradient-to-r from-[var(--line-strong)] to-transparent" />
+      {right}
+    </div>
   );
 }
 
@@ -93,10 +118,10 @@ export function Stat({
   size?: number;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <span className="label">{label}</span>
       <Readout value={value} unit={unit} size={size} color={color} />
-      {hint && <span className="text-[10px] text-[var(--text-2)]">{hint}</span>}
+      {hint && <span className="mono text-[9.5px] tracking-wide text-[var(--text-2)] uppercase">{hint}</span>}
     </div>
   );
 }
@@ -116,7 +141,7 @@ export function Field({
   title?: string;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-[3px]" title={title}>
+    <div className="flex items-baseline justify-between gap-3 border-b border-dashed border-[var(--line)] py-[4px] last:border-0" title={title}>
       <span className="label">{label}</span>
       <span
         className={`${mono ? "mono" : ""} text-right text-[12px]`}
@@ -202,59 +227,133 @@ export function SegmentBar({
         <span
           key={i}
           className="flex-1"
-          style={{ background: i < filled ? color : "var(--bg-3)" }}
+          style={{ background: i < filled ? color : "var(--bg-4)" }}
         />
       ))}
     </div>
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
+/**
+ * Banded instrument tape. The scale is divided into the decision zones the
+ * backend uses, each drawn in its own colour, with a pointer at the value —
+ * so the reading is shown *against* the thresholds that turn it into a
+ * decision, rather than as a bare fraction.
+ */
+export function ZoneTape({
+  value,
+  zones,
+  height = 16,
+  uncertain,
+}: {
+  value: number;
+  /** Ascending upper bounds in 0..1; the last should be 1. */
+  zones: { to: number; color: string; label: string }[];
+  height?: number;
+  uncertain?: boolean;
+}) {
+  const v = Math.max(0, Math.min(1, value));
+  const active = zones.find((z) => v <= z.to) ?? zones[zones.length - 1];
+  let from = 0;
   return (
-    <div className="flex h-full min-h-16 items-center justify-center px-4 text-center">
-      <span className="text-[11px] text-[var(--text-2)]">{children}</span>
+    <div className="flex flex-col gap-1 px-[5px]">
+      <div className="relative" style={{ height: height + 8 }}>
+        {/* pointer */}
+        <span
+          className="absolute top-0 z-[2] -translate-x-1/2 transition-[left] duration-300"
+          style={{ left: `${v * 100}%` }}
+        >
+          <svg width="11" height="7" viewBox="0 0 11 7" aria-hidden>
+            <path d="M0 0h11L5.5 7z" fill="var(--text-0)" />
+          </svg>
+        </span>
+        <div className="absolute right-0 bottom-0 left-0 flex gap-[2px]" style={{ height }}>
+          {zones.map((z) => {
+            const w = (z.to - from) * 100;
+            const isActive = z === active;
+            from = z.to;
+            return (
+              <span
+                key={z.label}
+                className="relative"
+                style={{
+                  width: `${w}%`,
+                  background: `color-mix(in srgb, ${z.color} ${isActive ? 26 : 10}%, transparent)`,
+                  boxShadow: `inset 0 -2px 0 color-mix(in srgb, ${z.color} ${isActive ? 100 : 45}%, transparent)`,
+                }}
+              />
+            );
+          })}
+        </div>
+        {/* fill up to the value */}
+        <span
+          className={`absolute bottom-0 left-0 z-[1] transition-[width] duration-300 ${uncertain ? "hatch" : ""}`}
+          style={{
+            height,
+            width: `${v * 100}%`,
+            background: uncertain ? undefined : `color-mix(in srgb, ${active.color} 30%, transparent)`,
+          }}
+        />
+        <span
+          className="absolute bottom-0 z-[2] w-[2px] -translate-x-1/2 transition-[left] duration-300"
+          style={{ left: `${v * 100}%`, height: height + 2, background: "var(--text-0)", boxShadow: `0 0 8px ${active.color}` }}
+        />
+      </div>
+      <div className="relative h-3">
+        {zones.slice(0, -1).map((z) => (
+          <span
+            key={z.label}
+            className="mono absolute top-0 -translate-x-1/2 text-[9px] text-[var(--text-2)]"
+            style={{ left: `${z.to * 100}%` }}
+          >
+            {z.to.toFixed(2)}
+          </span>
+        ))}
+        <span className="mono absolute top-0 left-0 text-[9px] text-[var(--text-3)]">0</span>
+        <span className="mono absolute top-0 right-0 text-[9px] text-[var(--text-3)]">1</span>
+      </div>
+    </div>
+  );
+}
+
+/** Four-bar link quality indicator. */
+export function SignalBars({ level, color = "var(--accent)" }: { level: number; color?: string }) {
+  return (
+    <span className="inline-flex items-end gap-[2px]" style={{ height: 12 }} aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className="w-[3px]"
+          style={{ height: 4 + i * 2.6, background: i < level ? color : "var(--line-strong)" }}
+        />
+      ))}
+    </span>
+  );
+}
+
+export function Empty({ children, title = "No data" }: { children: ReactNode; title?: string }) {
+  return (
+    <div className="flex h-full min-h-20 flex-col items-center justify-center gap-1.5 px-6 text-center">
+      <span className="label flex items-center gap-2 text-[var(--text-2)]">
+        <span className="h-px w-5 bg-[var(--line-strong)]" />
+        {title}
+        <span className="h-px w-5 bg-[var(--line-strong)]" />
+      </span>
+      <span className="max-w-[46ch] text-[11px] leading-snug text-[var(--text-2)]">{children}</span>
     </div>
   );
 }
 
 export function Divider({ label }: { label?: string }) {
   if (!label) return <hr className="my-2 border-0 border-t border-[var(--line)]" />;
-  return (
-    <div className="my-2 flex items-center gap-2">
-      <span className="label">{label}</span>
-      <span className="h-px flex-1 bg-[var(--line)]" />
-    </div>
-  );
+  return <Section className="mt-2">{label}</Section>;
 }
 
 export function KeyHint({ k, children }: { k: string; children: ReactNode }) {
   return (
-    <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-3)]">
-      <kbd className="mono border border-[var(--line-strong)] bg-[var(--bg-2)] px-1 text-[9px] text-[var(--text-2)]">
-        {k}
-      </kbd>
-      {children}
+    <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-2)]">
+      <kbd>{k}</kbd>
+      <span className="label text-[10px]">{children}</span>
     </span>
-  );
-}
-
-/**
- * Standing banner for a feed that is not a measurement. Deliberately impossible
- * to miss and impossible to dismiss.
- */
-export function SyntheticBanner({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-center gap-2 border-b px-3 py-[3px]"
-      style={{
-        background: "color-mix(in srgb, var(--warn) 14%, transparent)",
-        borderColor: "color-mix(in srgb, var(--warn) 40%, transparent)",
-      }}
-    >
-      <span className="dot" style={{ color: "var(--warn)" }} />
-      <span className="label-strong" style={{ color: "var(--warn)" }}>
-        {label} — displayed values are not measurements
-      </span>
-    </div>
   );
 }

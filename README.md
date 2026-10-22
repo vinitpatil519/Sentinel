@@ -94,8 +94,8 @@ On Windows use `backend\.venv\Scripts\python.exe`. The simulator defaults to por
 `RUVIEW_URL` at it if 3000/3001 are occupied, as above.
 
 Scenarios: `patrol` (every state), `sleep`, `wake`, `two-person`, `distress`,
-`clear`. Simulated frames are labelled `source: simulate`, and the console shows
-a standing banner saying so — synthetic output is never presented as measurement.
+`clear`. Simulated frames are labelled `source: simulate`; the console's System
+screen reports the active source.
 
 ### With real hardware
 
@@ -139,7 +139,15 @@ dwell, and a second subject in the volume withdraws the green light.
 
 ## The console
 
-Six screens, keyboard `1`–`6`, `F` for fullscreen.
+Six screens, keyboard `1`–`6`, `F` for fullscreen, `L` to lock. On the
+operations screen `V` cycles the volume view (perspective / plan / operator's
+vantage through the wall) and `O` toggles orbit.
+
+The console opens on a lock screen and asks for an access code (entered on the
+keypad and terminated with `#`); the telemetry socket stays closed until it is
+accepted. This is a screen lock, not access control — the check runs in the
+browser and the backend API is not gated. See `frontend/src/lib/access.ts` to
+change the code.
 
 - **Operations** — the 3-D sensing volume, the advisory, the roster, live events.
 - **Subjects** — every track in full, including the feature vector that produced

@@ -40,6 +40,15 @@ export function zuluDate(ts: number | Date = Date.now()): string {
   return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
 }
 
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+/** Date-time group, the military timestamp: `221052Z OCT 26`. */
+export function dtg(ts: number | Date = Date.now()): string {
+  const d = ts instanceof Date ? ts : new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}Z ${MONTHS[d.getUTCMonth()]} ${p(d.getUTCFullYear() % 100)}`;
+}
+
 export function clockHMS(ts: number): string {
   const d = new Date(ts);
   const p = (n: number) => String(n).padStart(2, "0");

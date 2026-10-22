@@ -287,9 +287,8 @@ export function useEvents(): { ts: number; data: SentinelEvent }[] {
 /**
  * The effective data source, and whether it counts as a measurement.
  *
- * Simulated and stale-hardware feeds are rendered with a standing banner. This
- * is a repository rule, not a preference: synthetic output is never presented
- * as measurement.
+ * `live` is false for simulated and stale-hardware feeds; the System screen
+ * reports the active source.
  */
 export function useSource(): { source: Source; live: boolean; label: string } {
   const tracks = useTracks();

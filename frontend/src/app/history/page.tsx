@@ -57,14 +57,15 @@ export default function History() {
   const stateTotal = Object.values(summary?.state_seconds ?? {}).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="grid h-full min-h-0 gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 380px" }}>
+    <div className="grid h-full min-h-0 gap-2.5" style={{ gridTemplateColumns: "minmax(0,1fr) 390px" }}>
       <Panel
+        code="F1"
         title="Event Log — recorded session"
         flush
         right={
-          <div className="flex gap-1">
+          <div className="flex">
             {SEVERITIES.map((s) => (
-              <button key={s} className="btn" data-active={severity === s} onClick={() => setSeverity(s)}>
+              <button key={s} className="btn h-[22px] px-2 text-[10.5px]" data-active={severity === s} onClick={() => setSeverity(s)}>
                 {s}
               </button>
             ))}
@@ -72,11 +73,11 @@ export default function History() {
         }
       >
         {error ? (
-          <Empty>{error}</Empty>
+          <Empty title="Backend unreachable">{error}</Empty>
         ) : events === null ? (
-          <Empty>Loading…</Empty>
+          <Empty title="Loading">Reading the session database…</Empty>
         ) : events.length === 0 ? (
-          <Empty>No events recorded for this filter.</Empty>
+          <Empty title="No events">No events recorded for this filter.</Empty>
         ) : (
           <table className="data-table">
             <thead>
@@ -94,12 +95,16 @@ export default function History() {
                   <td className="mono" style={{ color: "var(--text-2)" }}>
                     {clockHMS(e.ts)}
                   </td>
-                  <td style={{ color: SEVERITY_VAR[e.severity] ?? "var(--text-2)" }}>
-                    {e.severity.toUpperCase()}
+                  <td>
+                    <span className="chip" style={{ color: SEVERITY_VAR[e.severity] ?? "var(--text-2)", height: 17 }}>
+                      {e.severity}
+                    </span>
                   </td>
-                  <td style={{ color: "var(--text-0)" }}>{eventTitle(e.type)}</td>
-                  <td className="mono">{e.track_id ?? "--"}</td>
-                  <td className="mono" style={{ color: "var(--text-3)", whiteSpace: "normal" }}>
+                  <td className="display font-bold tracking-[0.1em]" style={{ color: e.severity === "info" ? "var(--text-0)" : SEVERITY_VAR[e.severity] }}>
+                    {eventTitle(e.type)}
+                  </td>
+                  <td className="mono" style={{ color: "var(--accent)" }}>{e.track_id ?? "--"}</td>
+                  <td className="mono text-[10.5px]" style={{ color: "var(--text-2)", whiteSpace: "normal" }}>
                     {Object.entries(e.payload)
                       .filter(([k]) => !["type", "severity", "track"].includes(k))
                       .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`)
@@ -112,12 +117,12 @@ export default function History() {
         )}
       </Panel>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-        <Panel title="Session Summary">
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-0.5 [&>*]:shrink-0">
+        <Panel code="F2" title="Session Summary" ticks>
           {summary?.session ? (
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-6">
-                <Stat label="Session" value={String(summary.session.id).padStart(4, "0")} />
+                <Stat label="Session" value={`S-${String(summary.session.id).padStart(4, "0")}`} />
                 <Stat
                   label="Started"
                   value={clockHMS(summary.session.started_at)}
@@ -218,11 +223,11 @@ export default function History() {
               )}
             </div>
           ) : (
-            <Empty>No session summary available.</Empty>
+            <Empty title="No summary">No session summary available.</Empty>
           )}
         </Panel>
 
-        <Panel title="Export">
+        <Panel code="F3" title="Export">
           <p className="mb-2 text-[11px] leading-snug text-[var(--text-1)]">
             Session data for offline analysis. The assessments table is the one the evaluation
             and calibration scripts read.

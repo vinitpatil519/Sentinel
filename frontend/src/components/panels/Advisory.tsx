@@ -7,8 +7,8 @@
  *   1. The decision must be readable across a room, in one glance, without
  *      parsing a number. Hence the full-width word in the panel's own colour.
  *   2. It must never be readable *without* its basis. The reason codes sit
- *      directly beneath it, always, not behind a tooltip — a recommendation a
- *      soldier cannot interrogate is one they will either over-trust or ignore.
+ *      directly beneath it, always, not behind a tooltip — a recommendation an
+ *      operator cannot interrogate is one they will either over-trust or ignore.
  *   3. Absence of evidence must look different from evidence of safety. The
  *      INSUFFICIENT EVIDENCE state is grey and hatched, never green.
  */
@@ -24,7 +24,7 @@ import {
   num,
   pct,
 } from "@/lib/format";
-import { Chip, Empty, Meter, Panel, SegmentBar } from "@/components/ui";
+import { Empty, Meter, Panel, Section, ZoneTape } from "@/components/ui";
 
 export default function AdvisoryPanel({
   track,
@@ -35,10 +35,10 @@ export default function AdvisoryPanel({
 }) {
   if (!track || !track.advisory) {
     return (
-      <Panel title="Approach Advisory" ticks>
-        <Empty>
-          No subject in the sensing volume. The advisory is issued per subject and
-          appears when one is acquired.
+      <Panel code="B1" title="Approach Advisory" ticks>
+        <Empty title="No subject">
+          The advisory is issued per subject and appears when one is acquired in the sensing
+          volume.
         </Empty>
       </Panel>
     );
@@ -50,152 +50,168 @@ export default function AdvisoryPanel({
   const unknown = advisory.decision === "INSUFFICIENT_EVIDENCE";
   const readiness = advisory.readiness_index;
 
-  const ticks = thresholds
-    ? [
-        thresholds.approach_max_arousal ?? 0.25,
-        thresholds.caution_max_arousal ?? 0.45,
-        thresholds.hold_max_arousal ?? 0.7,
-      ]
-    : [0.25, 0.45, 0.7];
+  const t = {
+    approach: thresholds?.approach_max_arousal ?? 0.25,
+    caution: thresholds?.caution_max_arousal ?? 0.45,
+    hold: thresholds?.hold_max_arousal ?? 0.7,
+  };
 
   return (
     <Panel
+      code="B1"
       title="Approach Advisory"
       accent={color}
-      ticks
       right={
-        <span className="mono text-[11px] text-[var(--text-1)]">{track.id}</span>
+        <span className="mono text-[11px] text-[var(--text-1)]">
+          SUBJ <span className="text-[var(--text-0)]">{track.id}</span>
+        </span>
       }
+      bodyClassName="!p-0"
     >
-      <div className={`flex flex-col gap-4 ${deny ? "deny-edge" : ""}`}>
-        {/* Decision */}
-        <div>
-          <div className="flex items-center gap-3">
+      {/* Decision */}
+      <div
+        className={`relative overflow-hidden border-b border-[var(--line)] px-4 pt-3.5 pb-3 ${deny ? "deny-edge" : ""}`}
+        style={{
+          background: unknown
+            ? "transparent"
+            : `linear-gradient(90deg, color-mix(in srgb, ${color} 16%, transparent), color-mix(in srgb, ${color} 3%, transparent) 70%)`,
+        }}
+      >
+        {unknown && <span className="hatch absolute inset-0 opacity-[0.18]" />}
+        <div className="relative flex items-stretch gap-3">
+          <span className={`w-[6px] flex-none ${unknown ? "hatch" : ""}`} style={{ background: unknown ? undefined : color, boxShadow: unknown ? undefined : `0 0 14px ${color}` }} />
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="label text-[10px]" style={{ color }}>
+              Recommendation
+            </span>
             <span
-              className={`h-9 w-[5px] ${unknown ? "hatch" : ""}`}
-              style={{ background: unknown ? undefined : color }}
-            />
-            <span
-              className="text-[26px] leading-none font-semibold tracking-[0.02em]"
-              style={{ color }}
+              className="display text-[34px] leading-[0.95] font-bold"
+              style={{ color, letterSpacing: "0.06em" }}
             >
               {DECISION_TEXT[advisory.decision]}
             </span>
+            <span className="text-[11.5px] leading-snug text-[var(--text-1)]">
+              {DECISION_SUB[advisory.decision]}
+            </span>
           </div>
-          <p className="mt-2 text-[11px] leading-snug text-[var(--text-1)]">
-            {DECISION_SUB[advisory.decision]}
-          </p>
         </div>
+      </div>
 
-        {/* Readiness index */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between">
+      <div className="flex flex-col gap-4 p-4">
+        {/* Readiness index against the decision thresholds */}
+        <div>
+          <div className="mb-1 flex items-baseline justify-between">
             <span className="label">Reflex readiness index</span>
-            <span className="mono text-[15px]" style={{ color }}>
+            <span className="readout text-[22px]" style={{ color }}>
               {num(readiness, 2)}
             </span>
           </div>
-          <SegmentBar value={readiness} color={color} segments={28} height={11} />
-          <div className="relative h-3">
-            {ticks.map((t) => (
-              <span
-                key={t}
-                className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
-                style={{ left: `${t * 100}%` }}
-              >
-                <span className="h-1 w-px bg-[var(--line-strong)]" />
-                <span className="mono text-[8px] text-[var(--text-3)]">{t.toFixed(2)}</span>
-              </span>
-            ))}
-          </div>
+          <ZoneTape
+            value={readiness}
+            uncertain={unknown}
+            zones={[
+              { to: t.approach, color: "var(--advisory-approach)", label: "APPROACH" },
+              { to: t.caution, color: "var(--advisory-caution)", label: "CAUTION" },
+              { to: t.hold, color: "var(--advisory-hold)", label: "HOLD" },
+              { to: 1, color: "var(--advisory-deny)", label: "DENY" },
+            ]}
+          />
         </div>
 
         {/* Basis */}
         <div>
-          <span className="label">Basis</span>
-          <ul className="mt-1.5 flex flex-col gap-1">
+          <Section right={<span className="mono text-[9.5px] text-[var(--text-3)]">{advisory.reasons.length} CODES</span>}>
+            Basis
+          </Section>
+          <ul className="flex flex-col gap-1.5">
             {advisory.reason_text.length === 0 && (
               <li className="text-[11px] text-[var(--text-2)]">
                 Nominal — no modifier applied to the state posterior.
               </li>
             )}
             {advisory.reason_text.map((text, i) => (
-              <li key={advisory.reasons[i] ?? text} className="flex gap-2 text-[11px] leading-snug">
-                <span
-                  className="mt-[5px] h-[3px] w-[3px] flex-none"
-                  style={{ background: color }}
-                />
-                <span className="text-[var(--text-1)]">{text}</span>
+              <li key={advisory.reasons[i] ?? text} className="flex items-start gap-2 text-[11.5px] leading-snug">
+                <span className="mono mt-[1px] flex-none text-[10px]" style={{ color }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="text-[var(--text-1)]">
+                  {text}
+                  {advisory.reasons[i] && (
+                    <span className="mono ml-1.5 text-[9.5px] text-[var(--text-3)]">[{advisory.reasons[i]}]</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
         </div>
 
         {/* Supporting figures */}
-        <div className="grid grid-cols-3 gap-3 border-t border-[var(--line)] pt-3">
+        <div className="grid grid-cols-3 border border-[var(--line)]">
           <Figure
-            label="Advisory conf."
+            label="Adv. conf"
             value={num(advisory.confidence, 2)}
             sub={confidenceWord(advisory.confidence)}
             meter={advisory.confidence}
           />
           <Figure
-            label="Stability 15s"
+            label="Stability"
             value={num(advisory.stability, 2)}
-            sub={advisory.stability > 0.6 ? "STEADY" : "FLUCTUATING"}
+            sub={advisory.stability > 0.6 ? "STEADY · 15S" : "FLUCTUATING"}
             meter={advisory.stability}
           />
           <Figure
             label="Quiet window"
             value={advisory.quiet_window_s !== null ? duration(advisory.quiet_window_s) : "--"}
             sub={advisory.quiet_window_s !== null ? "EXPECTED" : "NOT OFFERED"}
+            last
           />
         </div>
 
         {/* Behavioural state */}
         {state && (
-          <div className="border-t border-[var(--line)] pt-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="label">Behavioural state</span>
-              {state.state ? (
-                <Chip color={STATE_VAR[state.state]} dot>
-                  {state.state.replace("_", " ")}
-                </Chip>
-              ) : (
-                <Chip color="var(--unknown)">UNRESOLVED</Chip>
-              )}
-            </div>
-            <p className="mt-1.5 text-[11px] leading-snug text-[var(--text-2)]">{state.label}</p>
-            <div className="mt-2 grid grid-cols-3 gap-3">
-              <Figure label="State conf." value={num(state.confidence, 2)} meter={state.confidence} />
-              <Figure label="Evidence" value={num(state.evidence, 2)} meter={state.evidence} />
-              <Figure label="Dwell" value={duration(state.dwell_s)} sub={`${state.features_used} FEATURES`} />
-            </div>
-          </div>
-        )}
-
-        {/* Posterior */}
-        {state && (
           <div>
-            <span className="label">State posterior</span>
-            <div className="mt-1.5 flex flex-col gap-[3px]">
+            <Section
+              right={
+                <span
+                  className="chip"
+                  style={{ color: state.state ? STATE_VAR[state.state] : "var(--unknown)" }}
+                >
+                  <span className="dot" />
+                  {state.state ? state.state.replace("_", " ") : "Unresolved"}
+                </span>
+              }
+            >
+              Behavioural state
+            </Section>
+            <p className="text-[11px] leading-snug text-[var(--text-2)]">{state.label}</p>
+            <div className="mt-2.5 grid grid-cols-3 border border-[var(--line)]">
+              <Figure label="State conf" value={num(state.confidence, 2)} meter={state.confidence} />
+              <Figure label="Evidence" value={num(state.evidence, 2)} meter={state.evidence} />
+              <Figure label="Dwell" value={duration(state.dwell_s)} sub={`${state.features_used} FEATURES`} last />
+            </div>
+
+            <div className="mt-3 flex flex-col gap-[5px]">
               {Object.entries(state.posterior)
                 .sort((a, b) => b[1] - a[1])
-                .map(([name, p]) => (
-                  <div key={name} className="flex items-center gap-2">
-                    <span className="mono w-[86px] text-[9.5px] text-[var(--text-2)]">{name}</span>
-                    <div className="flex-1">
-                      <Meter
-                        value={p}
-                        color={STATE_VAR[name as keyof typeof STATE_VAR]}
-                        height={5}
-                      />
+                .map(([name, p], i) => {
+                  const c = STATE_VAR[name as keyof typeof STATE_VAR];
+                  return (
+                    <div key={name} className="flex items-center gap-2">
+                      <span
+                        className="mono w-[92px] flex-none text-[9.5px]"
+                        style={{ color: i === 0 ? c : "var(--text-2)" }}
+                      >
+                        {name}
+                      </span>
+                      <div className="flex-1">
+                        <Meter value={p} color={c} height={i === 0 ? 6 : 4} />
+                      </div>
+                      <span className="mono w-9 text-right text-[10px] text-[var(--text-1)]">
+                        {pct(p)}%
+                      </span>
                     </div>
-                    <span className="mono w-8 text-right text-[9.5px] text-[var(--text-2)]">
-                      {pct(p)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
         )}
@@ -209,18 +225,20 @@ function Figure({
   value,
   sub,
   meter,
+  last,
 }: {
   label: string;
   value: string;
   sub?: string;
   meter?: number;
+  last?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="label">{label}</span>
-      <span className="mono text-[14px] text-[var(--text-0)]">{value}</span>
-      {meter !== undefined && <Meter value={meter} color="var(--text-3)" height={3} />}
-      {sub && <span className="mono text-[9px] text-[var(--text-3)]">{sub}</span>}
+    <div className={`flex flex-col gap-1 px-2.5 py-2 ${last ? "" : "border-r border-[var(--line)]"}`}>
+      <span className="label text-[10px]">{label}</span>
+      <span className="mono text-[15px] leading-none text-[var(--text-0)]">{value}</span>
+      {meter !== undefined && <Meter value={meter} color="var(--accent)" height={2} />}
+      {sub && <span className="mono text-[9px] text-[var(--text-2)]">{sub}</span>}
     </div>
   );
 }

@@ -60,9 +60,10 @@ export default function RF() {
   const list = nodes?.nodes ?? [];
 
   return (
-    <div className="grid h-full min-h-0 gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 420px" }}>
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
+    <div className="grid h-full min-h-0 gap-2.5" style={{ gridTemplateColumns: "minmax(0,1fr) 430px" }}>
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-0.5 [&>*]:shrink-0">
         <Panel
+          code="E1"
           title="Sensing Nodes"
           flush
           right={
@@ -72,18 +73,18 @@ export default function RF() {
           }
         >
           {list.length === 0 ? (
-            <Empty>
+            <Empty title="No nodes">
               No node telemetry. The sensing server reports nodes once CSI frames arrive on
               UDP 5005.
             </Empty>
           ) : (
-            <table className="data-table">
+            <table className="data-table [&_td]:px-2 [&_th]:px-2">
               <thead>
                 <tr>
                   <th>Node</th>
                   <th>Status</th>
                   <th className="text-right">RSSI</th>
-                  <th style={{ width: 120 }}>RSSI trend</th>
+                  <th style={{ width: "22%" }}>RSSI trend</th>
                   <th className="text-right">Rate</th>
                   <th className="text-right">Subcarriers</th>
                   <th className="text-right">Motion band</th>
@@ -99,8 +100,11 @@ export default function RF() {
                   return (
                     <tr key={n.node_id}>
                       <td className="mono" style={{ color: "var(--text-0)" }}>N{n.node_id}</td>
-                      <td style={{ color: n.stale ? "var(--deny)" : "var(--ok)" }}>
-                        {n.stale ? "STALE" : "ONLINE"}
+                      <td>
+                        <span className="chip" style={{ color: n.stale ? "var(--deny)" : "var(--ok)" }}>
+                          <span className={`dot ${n.stale ? "blink" : ""}`} />
+                          {n.stale ? "Stale" : "Online"}
+                        </span>
                       </td>
                       <td className="num">{num(n.rssi_dbm)} dBm</td>
                       <td style={{ padding: "2px 8px" }}>
@@ -131,25 +135,26 @@ export default function RF() {
           )}
         </Panel>
 
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
           {list.map((n) => (
             <Panel
               key={n.node_id}
-              title={`Node ${n.node_id} — CSI amplitude profile`}
+              code={`E2.${n.node_id}`}
+              title={`Node ${n.node_id} · CSI profile`}
               right={
                 <Chip color={n.stale ? "var(--deny)" : "var(--text-2)"}>
                   {n.stale ? "STALE" : `${num(n.frame_rate_hz, 1)} Hz`}
                 </Chip>
               }
             >
-              <BarProfile data={n.amplitude_profile} height={62} color="var(--accent)" />
+              <BarProfile data={n.amplitude_profile} height={70} color={n.stale ? "var(--deny)" : "var(--accent)"} />
               <div className="mt-2 grid grid-cols-2 gap-x-5">
                 <Field label="Mean amplitude" value={n.amplitude_mean !== null ? num(n.amplitude_mean, 2) : "--"} />
                 <Field label="Subcarriers" value={String(n.subcarrier_count)} />
                 <Field label="Link margin" value={`${num(n.rssi_dbm)} dBm`} />
                 <Field label="Last seen" value={n.last_seen_ms ? "reported" : "--"} />
               </div>
-              <p className="mt-1.5 text-[9.5px] leading-snug text-[var(--text-3)]">
+              <p className="note mt-1.5">
                 Decimated to 48 bins for transport. Chest displacement modulates these bins
                 unevenly; the respiration chain averages them to trade sensitivity for noise.
               </p>
@@ -157,16 +162,16 @@ export default function RF() {
           ))}
         </div>
 
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          <Panel title="Motion band power — volume wide">
-            <Sparkline data={motionSeries} color="var(--alert)" height={64} fill />
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          <Panel code="E3" title="Motion band power · volume">
+            <Sparkline data={motionSeries} color="var(--alert)" height={92} fill scale />
             <div className="mt-2 grid grid-cols-2 gap-x-5">
               <Field label="Current" value={presence ? presence.motion_band_power.toExponential(2) : "--"} />
               <Field label="Change points" value={presence ? String(presence.change_points) : "--"} />
             </div>
           </Panel>
-          <Panel title="Respiration band power — volume wide">
-            <Sparkline data={breathingSeries} color="var(--ok)" height={64} fill />
+          <Panel code="E4" title="Respiration band power · volume">
+            <Sparkline data={breathingSeries} color="var(--ok)" height={92} fill scale />
             <div className="mt-2 grid grid-cols-2 gap-x-5">
               <Field
                 label="Dominant"
@@ -181,14 +186,14 @@ export default function RF() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-        <Panel title="Deployment Plan" ticks>
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-0.5 [&>*]:shrink-0">
+        <Panel code="E5" title="Deployment Plan" ticks>
           <PlanView
             tracks={tracks?.tracks ?? []}
             nodes={list}
             geometry={caps?.geometry}
             selectedId={selected}
-            height={330}
+            height={380}
           />
           <div className="mt-2 grid grid-cols-2 gap-x-5">
             <Field
@@ -208,7 +213,7 @@ export default function RF() {
           </div>
         </Panel>
 
-        <Panel title="Signal Field">
+        <Panel code="E6" title="Signal Field">
           {field ? (
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-6">
@@ -221,14 +226,14 @@ export default function RF() {
                 <Field label="Extent" value={field.extent.map((e) => `${e}`).join(" × ") + " m"} />
                 <Field label="Source" value={field.source} />
               </div>
-              <p className="text-[9.5px] leading-snug text-[var(--text-3)]">
+              <p className="note">
                 Voxels below the cut are the empty-room floor and are dropped before transport;
                 what reaches the console is only the part of the field that carries subject
                 information.
               </p>
             </div>
           ) : (
-            <Empty>No signal field received.</Empty>
+            <Empty title="No field">No signal field received.</Empty>
           )}
         </Panel>
       </div>

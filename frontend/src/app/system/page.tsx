@@ -66,17 +66,17 @@ export default function System() {
   }, [refresh]);
 
   return (
-    <div className="grid h-full min-h-0 gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 400px" }}>
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
+    <div className="grid h-full min-h-0 gap-2.5" style={{ gridTemplateColumns: "minmax(0,1fr) 410px" }}>
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-0.5 [&>*]:shrink-0">
         <LabelControl trackIds={(tracks?.tracks ?? []).map((t) => t.id)} />
         <ChannelInspector channel={inspect} onChannel={setInspect} />
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-0.5">
-        <Panel title="Platform">
+      <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-0.5 [&>*]:shrink-0">
+        <Panel code="G3" title="Platform">
           <div className="flex flex-wrap gap-6">
             <Stat label="Version" value={caps?.version ?? "--"} />
-            <Stat label="Session" value={caps?.session_id != null ? String(caps.session_id).padStart(4, "0") : "--"} />
+            <Stat label="Session" value={caps?.session_id != null ? `S-${String(caps.session_id).padStart(4, "0")}` : "--"} />
             <Stat label="Link" value={link.toUpperCase()} color={link === "live" ? "var(--ok)" : "var(--warn)"} />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-x-5 border-t border-[var(--line)] pt-2">
@@ -89,7 +89,7 @@ export default function System() {
           </div>
         </Panel>
 
-        <Panel title="Behavioural State Model">
+        <Panel code="G4" title="Behavioural State Model">
           {caps ? (
             <div className="flex flex-col gap-2">
               <div>
@@ -136,13 +136,13 @@ export default function System() {
               </div>
             </div>
           ) : (
-            <Empty>Backend unreachable.</Empty>
+            <Empty title="Backend unreachable">Model details are served by the backend.</Empty>
           )}
         </Panel>
 
-        <Panel title="Sensors">
+        <Panel code="G5" title="Sensors">
           {sensors.length === 0 ? (
-            <Empty>No sensors configured.</Empty>
+            <Empty title="No sensors">No sensors configured.</Empty>
           ) : (
             <div className="flex flex-col gap-3">
               {sensors.map((s) => (
@@ -180,7 +180,7 @@ export default function System() {
           )}
         </Panel>
 
-        <Panel title="Channel Rates">
+        <Panel code="G6" title="Channel Rates">
           {stats?.hub?.channels ? (
             <table className="data-table">
               <thead>
@@ -201,7 +201,7 @@ export default function System() {
               </tbody>
             </table>
           ) : (
-            <Empty>No hub statistics.</Empty>
+            <Empty title="No statistics">No hub statistics.</Empty>
           )}
         </Panel>
       </div>
@@ -263,6 +263,7 @@ function LabelControl({ trackIds }: { trackIds: string[] }) {
 
   return (
     <Panel
+      code="G1"
       title="Ground-truth labelling"
       ticks
       right={
@@ -320,7 +321,7 @@ function LabelControl({ trackIds }: { trackIds: string[] }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="notes — subject, posture, anything that changes the interpretation"
-            className="mono mt-2 w-full border border-[var(--line)] bg-[var(--bg-1)] px-2 py-1 text-[11px] text-[var(--text-0)] outline-none"
+            className="input mt-2"
           />
           <div className="mt-2 flex gap-2">
             <button className="btn" onClick={() => void commit()}>
@@ -384,11 +385,12 @@ function ChannelInspector({
 
   return (
     <Panel
+      code="G2"
       title="Channel Inspector"
       right={
         <div className="flex flex-wrap gap-1">
           {CHANNELS.map((c) => (
-            <button key={c} className="btn" data-active={channel === c} onClick={() => onChannel(c)}>
+            <button key={c} className="btn h-[22px] px-2 text-[10.5px]" data-active={channel === c} onClick={() => onChannel(c)}>
               {c.replace("rf.", "")}
             </button>
           ))}
@@ -400,7 +402,7 @@ function ChannelInspector({
         <Field label="Last sequence" value={latest ? String(latest.seq) : "--"} />
         <Field label="Last update" value={latest ? clockHMS(latest.ts) : "--"} />
       </div>
-      <pre className="max-h-[38vh] overflow-auto border border-[var(--line)] bg-[var(--bg-0)] p-2 text-[10px] leading-relaxed text-[var(--text-1)]">
+      <pre className="mono max-h-[46vh] overflow-auto border border-[var(--line)] bg-[#060a0b] p-3 text-[10.5px] leading-relaxed text-[var(--accent)]">
         {latest ? JSON.stringify(latest.data, null, 2) : "no message received on this channel"}
       </pre>
 
