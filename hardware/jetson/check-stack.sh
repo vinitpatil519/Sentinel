@@ -56,7 +56,17 @@ skip() { N=$((N+1)); printf '\033[33m skip \033[0m %d. %s\n' "$N" "$1"
          if [[ -n "${2:-}" ]]; then printf '        %s\n' "$2"; fi; }
 info() { printf '        %s\n' "$1"; }
 
-get() { curl -s -m 5 "$1" 2>/dev/null; }
+# The sensing server's /api/v1/* needs a bearer when RUVIEW_API_TOKEN is set.
+# Take it from the environment, else from the env file the services share.
+RUVIEW_ENV=/etc/sentinel/ruview.env
+if [[ -z "${RUVIEW_TOKEN:-}" && -r "$RUVIEW_ENV" ]]; then
+  RUVIEW_TOKEN="$(sed -n 's/^RUVIEW_TOKEN=//p' "$RUVIEW_ENV" | head -1)"
+fi
+if [[ -n "${RUVIEW_TOKEN:-}" ]]; then
+  get() { curl -s -m 5 -H "Authorization: Bearer $RUVIEW_TOKEN" "$1" 2>/dev/null; }
+else
+  get() { curl -s -m 5 "$1" 2>/dev/null; }
+fi
 
 # Read one value out of a JSON document on stdin. The expression is handed to
 # python as an argument rather than interpolated into a double-quoted string:

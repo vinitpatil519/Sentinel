@@ -18,6 +18,9 @@ WorkingDirectory=/home/sentinel/sentinel/backend
 Environment=RUVIEW_URL=http://localhost:3000
 Environment=SENTINEL_DB_PATH=/home/sentinel/sentinel-data/sentinel.db
 Environment=PYTHONUNBUFFERED=1
+# RUVIEW_TOKEN: bearer for the sensing server's API. Current upstream images
+# refuse to start on 0.0.0.0 without RUVIEW_API_TOKEN; both read this file.
+EnvironmentFile=-/etc/sentinel/ruview.env
 ExecStart=/home/sentinel/sentinel/backend/.venv/bin/uvicorn sentinel.main:app \
     --host 0.0.0.0 --port 8010
 Restart=always

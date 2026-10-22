@@ -4,11 +4,8 @@
  * One binary for every node; identity and network come from NVS (see
  * node_config.h). Three tasks:
  *
- *   poke      sends a tiny UDP datagram at poke_hz. Its purpose is not the
- *             datagram — it is the AP's link-layer ACK, which arrives as a
- *             received frame carrying CSI. This is what gives the capture a
- *             sampling clock instead of leaving it at the mercy of whatever
- *             traffic happens to exist.
+ *   poke      requests ICMP echo replies at poke_hz. Incoming reply data
+ *             frames provide CSI samples even when link-layer ACKs do not.
  *   report    packs the newest CSI buffer into an ADR-018 frame at report_hz
  *             and sends it to the sensing host.
  *   console   a serial provisioning shell, always available.
@@ -30,6 +27,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
+#include "ping/ping_sock.h"
 #include "node_config.h"
 #include "nvs_flash.h"
 #include "wifi_link.h"
@@ -68,28 +66,38 @@ static bool socket_open(void)
     return true;
 }
 
-/*
- * Traffic generator. The payload is one byte and is never read by anything: the
- * sensing server binds this port for CSI frames and ignores anything too short
- * to carry a header, which is exactly what a poke is.
+/* Generate received data frames using ICMP echo replies. On the tested S3/AP
+ * pair, UDP transmissions plus ACK dump produced only sparse CSI. Echo replies
+ * provide actual incoming data packets without a separate host traffic service.
  */
 static void poke_task(void *arg)
 {
     (void)arg;
-    const uint8_t payload = 0x00;
-    TickType_t period = pdMS_TO_TICKS(1000 / (s_cfg.poke_hz ? s_cfg.poke_hz : 100));
-    if (period == 0) {
-        period = 1;
+    esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
+    config.count = ESP_PING_COUNT_INFINITE;
+    config.interval_ms = 1000 / (s_cfg.poke_hz ? s_cfg.poke_hz : 100);
+    if (config.interval_ms == 0) config.interval_ms = 1;
+    config.timeout_ms = 100;
+    config.data_size = 16;
+    esp_ping_callbacks_t callbacks = {0};
+    esp_ping_handle_t ping = NULL;
+    if (!ipaddr_aton(s_cfg.target_ip, &config.target_addr)) {
+        ESP_LOGE(TAG, "invalid traffic target IP");
+        vTaskDelete(NULL);
+        return;
     }
-    TickType_t last = xTaskGetTickCount();
-
-    for (;;) {
-        if (wifi_link_is_up() && socket_open()) {
-            sendto(s_sock, &payload, sizeof(payload), 0,
-                   (struct sockaddr *)&s_target, sizeof(s_target));
-        }
-        vTaskDelayUntil(&last, period);
+    esp_err_t err = esp_ping_new_session(&config, &callbacks, &ping);
+    if (err == ESP_OK) {
+        err = esp_ping_start(ping);
+        if (err != ESP_OK) esp_ping_delete_session(ping);
     }
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "ICMP traffic start failed: %s", esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "ICMP traffic to %s at up to %u Hz", s_cfg.target_ip,
+                 (unsigned)s_cfg.poke_hz);
+    }
+    vTaskDelete(NULL);
 }
 
 static void report_task(void *arg)

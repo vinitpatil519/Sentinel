@@ -113,7 +113,7 @@ ok "this host is ${HOST_IP:-unknown}"
 cat <<NOTE
 
 Next:
-  1. Provision each node with --target-ip ${HOST_IP:-<this host's IP>}
+  1. Provision each node with --target-ip ${HOST_IP:-<this host IP>}
      (hardware/esp32-csi-node/tools/provision.py)
   2. Start the sensing server:
        docker run -d --name ruview --restart unless-stopped \

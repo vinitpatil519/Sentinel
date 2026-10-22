@@ -9,7 +9,13 @@ Requires=docker.service
 [Service]
 Type=simple
 ExecStartPre=-/usr/bin/docker rm -f ruview
+# /etc/sentinel/ruview.env (mode 600) must set:
+#   RUVIEW_API_TOKEN=<openssl rand -hex 32>   upstream refuses 0.0.0.0 without it
+#   RUVIEW_TOKEN=<same value>                 read by sentinel-backend
+#   RUVIEW_UDP_ALLOW=<node subnet CIDR>       else UDP binds loopback only and
+#                                             no node frame ever arrives
 ExecStart=/usr/bin/docker run --rm --name ruview \
+    --env-file /etc/sentinel/ruview.env \
     -p 3000:3000 -p 3001:3001 -p 5005:5005/udp \
     ruvnet/wifi-densepose:latest
 ExecStop=/usr/bin/docker stop ruview

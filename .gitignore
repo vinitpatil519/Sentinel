@@ -7,3 +7,15 @@ node_modules/
 tsconfig.tsbuildinfo
 *.log
 .env*
+
+# Research material stays out of this repo until publication
+reports/
+docs/
+NEXT-STEPS.md
+
+# ESP-IDF build output and machine-local node state
+hardware/esp32-csi-node/build*/
+hardware/esp32-csi-node/sdkconfig
+hardware/esp32-csi-node/sdkconfig.old
+hardware/esp32-csi-node/deployment-status.json
+*.pre-icmp

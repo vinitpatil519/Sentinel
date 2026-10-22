@@ -1,7 +1,8 @@
 # SENTINEL CSI node defaults. Applied on a fresh `idf.py build`; edit with
 # `idf.py menuconfig` if you need to change one.
 
-CONFIG_IDF_TARGET="esp32s3"
+# No CONFIG_IDF_TARGET here: `idf.py set-target esp32s3` (or `esp32` for a
+# classic WROOM-32) picks the chip, and a pinned target blocks the other.
 
 # --- CSI ---------------------------------------------------------------------
 # Without this the CSI callback is never compiled in and esp_wifi_set_csi()
@@ -35,5 +36,8 @@ CONFIG_FREERTOS_HZ=1000
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 
 # --- Partitions --------------------------------------------------------------
+# The 3 MB factory app does not fit IDF's 2 MB default. 4 MB is the smallest
+# flash on any ESP32-S3 DevKit, so this is safe on every board variant.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
