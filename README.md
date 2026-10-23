@@ -114,8 +114,8 @@ any evidence and flags weak evidence as a modifier. APPROACH still requires a
 resolved ASLEEP state. The evaluated figures above hold only with the gate on
 (the default). The Jetson unit in `hardware/jetson/` runs with it off.
 
-Flash and place the ESP32-S3 nodes per
-[`docs/deployment.md`](docs/deployment.md). Set the real room dimensions in
+Flash, provision and place the nodes per
+[`hardware/README.md`](hardware/README.md). Set the real room dimensions in
 `backend/sentinel/config/default.yaml` — the console draws the deployment from
 them.
 
