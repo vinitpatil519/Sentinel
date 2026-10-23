@@ -104,7 +104,15 @@ screen reports the active source.
 docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
 
 RUVIEW_URL=http://localhost:3000 .venv/bin/uvicorn sentinel.main:app --port 8010
+
+# bench trials: always issue a decision, never INSUFFICIENT EVIDENCE
+SENTINEL_ADVISORY__EVIDENCE_GATE=false RUVIEW_URL=http://localhost:3000 .venv/bin/uvicorn sentinel.main:app --port 8010
 ```
+
+With the evidence gate off, the advisory shows the policy's best decision on
+any evidence and flags weak evidence as a modifier. APPROACH still requires a
+resolved ASLEEP state. The evaluated figures above hold only with the gate on
+(the default). The Jetson unit in `hardware/jetson/` runs with it off.
 
 Flash and place the ESP32-S3 nodes per
 [`docs/deployment.md`](docs/deployment.md). Set the real room dimensions in

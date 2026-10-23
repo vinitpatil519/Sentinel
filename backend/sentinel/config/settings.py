@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     #: Approach-advisory thresholds.
     advisory: dict = Field(default_factory=dict)
 
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+        # The YAML files arrive as init kwargs. Put the environment above them,
+        # as the layering promises, so a deployment can flip a single key
+        # (SENTINEL_ADVISORY__EVIDENCE_GATE=false) without a config file; the
+        # sources are deep-merged, so the rest of the section is kept.
+        return env_settings, init_settings, dotenv_settings, file_secret_settings
+
 
 def load_settings(config_file: str | Path | None = None) -> Settings:
     cfg_dir = Path(__file__).parent
@@ -76,7 +84,12 @@ def load_settings(config_file: str | Path | None = None) -> Settings:
     for f in files:
         if f.exists():
             loaded = yaml.safe_load(f.read_text()) or {}
-            merged.update(loaded)
+            for key, value in loaded.items():
+                # A section in local.yaml amends the default one, not replaces it.
+                if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                    merged[key] = {**merged[key], **value}
+                else:
+                    merged[key] = value
     model_path = cfg_dir / "state_model.yaml"
     if model_path.exists() and not merged.get("state_model"):
         merged["state_model"] = yaml.safe_load(model_path.read_text()) or {}

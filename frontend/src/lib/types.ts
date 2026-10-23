@@ -90,6 +90,14 @@ export type Advisory = {
   reason_text: string[];
   quiet_window_s: number | null;
   stability: number;
+  /** The one policy rule the decision rests on (backend BASIS_TEXT key). */
+  basis: string;
+  basis_text: string;
+  /** Seconds the standing decision has stood. */
+  held_s: number;
+  /** A more permissive decision waiting out the de-escalation dwell. */
+  pending: Decision | null;
+  pending_in_s: number | null;
 };
 
 export type FeatureVector = {
@@ -237,7 +245,7 @@ export type Capabilities = {
     decisions: Decision[];
     vitals_attribution: string;
   };
-  advisory: Record<string, number>;
+  advisory: Record<string, number | boolean>;
 };
 
 export type StoredEvent = {

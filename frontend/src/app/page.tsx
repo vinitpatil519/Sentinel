@@ -176,7 +176,7 @@ export default function Operations() {
             <div className="hud-box pointer-events-none absolute bottom-4 left-4 z-[3] flex max-w-[min(54%,440px)] flex-col gap-1.5 px-3 py-2">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="label text-[10px]">Advisory</span>
-                {LEGEND.map((d) => (
+                {LEGEND.filter((d) => d !== "INSUFFICIENT_EVIDENCE" || caps?.advisory?.evidence_gate !== false).map((d) => (
                   <span key={d} className="flex items-center gap-1.5">
                     <span className="h-[7px] w-[7px]" style={{ background: DECISION_VAR[d] }} />
                     <span className="mono text-[9.5px] text-[var(--text-1)]">{LEGEND_SHORT[d]}</span>

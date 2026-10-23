@@ -18,6 +18,7 @@ import { Sparkline, StateBand } from "@/components/charts";
 import { Chip, Empty, Field, Panel, Section } from "@/components/ui";
 import { useCapabilities, useChannelHistory, useNodes, useTracks, useUpstreamVitals } from "@/lib/telemetry";
 import {
+  DASH,
   DECISION_TEXT,
   DECISION_VAR,
   PROVENANCE_TEXT,
@@ -108,7 +109,7 @@ export default function Subjects() {
                           {state ? STATE_SHORT[state] : "UNRESOLVED"}
                         </td>
                         <td className="display font-bold tracking-[0.1em]" style={{ color: DECISION_VAR[decision] }}>
-                          {DECISION_TEXT[decision]}
+                          {t.advisory ? DECISION_TEXT[decision] : DASH}
                         </td>
                         <td className="num">{num(t.advisory?.readiness_index ?? 0, 2)}</td>
                         <td className="num">

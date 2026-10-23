@@ -94,18 +94,10 @@ export function range(p: [number, number, number] | undefined): string {
 
 export const DECISION_TEXT: Record<Decision, string> = {
   APPROACH: "APPROACH",
-  CAUTION: "APPROACH W/ CAUTION",
+  CAUTION: "CAUTION",
   HOLD: "HOLD",
   DO_NOT_APPROACH: "DO NOT APPROACH",
   INSUFFICIENT_EVIDENCE: "INSUFFICIENT EVIDENCE",
-};
-
-export const DECISION_SUB: Record<Decision, string> = {
-  APPROACH: "Subject dormant and stable beyond the dwell threshold",
-  CAUTION: "Low arousal, but not a sustained dormant state",
-  HOLD: "Elevated arousal — wait for a quieter window",
-  DO_NOT_APPROACH: "Subject alert, moving or in distress",
-  INSUFFICIENT_EVIDENCE: "Evidence below the decision threshold — no clearance given",
 };
 
 export const DECISION_VAR: Record<Decision, string> = {

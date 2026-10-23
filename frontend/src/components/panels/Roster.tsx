@@ -11,6 +11,7 @@
 
 import type { Track } from "@/lib/types";
 import {
+  DASH,
   DECISION_TEXT,
   DECISION_VAR,
   PROVENANCE_TEXT,
@@ -113,7 +114,7 @@ function RosterRow({
                 {state ? STATE_SHORT[state] : "UNRESOLVED"}
               </span>
               <span className="display ml-auto text-[12px] font-bold tracking-[0.12em]" style={{ color }}>
-                {DECISION_TEXT[decision]}
+                {track.advisory ? DECISION_TEXT[decision] : DASH}
               </span>
             </div>
 

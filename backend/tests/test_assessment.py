@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from sentinel.core.assessment import (
     AROUSAL,
+    BASIS_TEXT,
+    DECISION_RANK,
     STATES,
     ApproachPolicy,
     BehaviouralStateModel,
@@ -159,6 +161,23 @@ def test_weak_evidence_never_permits():
     assert "WEAK_EVIDENCE" in out.advisory.reasons
 
 
+def test_evidence_gate_off_issues_a_decision_but_never_permits_blind():
+    """Bench mode: no INSUFFICIENT_EVIDENCE, weak evidence still reported, no green light."""
+    a = SubjectAssessor(policy_cfg=PolicyConfig.from_dict({"evidence_gate": "false"}))
+    out = drive(a, vitals(conf=0.0, intervals=0, attribution="unattributed"), 180)
+    assert out.advisory.decision is not Decision.INSUFFICIENT_EVIDENCE
+    assert out.advisory.decision is not Decision.APPROACH
+    assert "WEAK_EVIDENCE" in out.advisory.reasons
+    assert out.advisory.basis in BASIS_TEXT
+
+
+def test_evidence_gate_switch_parses_text():
+    assert PolicyConfig.from_dict({"evidence_gate": "false"}).evidence_gate is False
+    assert PolicyConfig.from_dict({"evidence_gate": "off"}).evidence_gate is False
+    assert PolicyConfig.from_dict({"evidence_gate": True}).evidence_gate is True
+    assert PolicyConfig().evidence_gate is True
+
+
 def test_weak_evidence_does_not_suppress_a_warning():
     """Low confidence must not hide a high-arousal reading behind 'unknown'."""
     a = SubjectAssessor()
@@ -186,6 +205,26 @@ def test_de_escalation_is_delayed():
     soon = a.update(T0 + 61_000, calm, 1)
     assert soon.advisory.decision is not Decision.APPROACH
     assert "DE_ESCALATION_HOLD" in soon.advisory.reasons
+    # A held decision says so, and names the relief it is waiting on.
+    assert soon.advisory.basis == "DE_ESCALATION_HOLD"
+    assert soon.advisory.pending is not None
+    assert DECISION_RANK[soon.advisory.pending] < DECISION_RANK[soon.advisory.decision]
+    assert 0.0 < soon.advisory.pending_in_s <= PolicyConfig().de_escalation_dwell_s
+
+
+def test_every_decision_states_its_basis():
+    """No restriction is ever shown with nothing beneath it."""
+    a = SubjectAssessor()
+    outs = [
+        drive(a, vitals(bpm=12.0, rrv=0.07, motion=0.5, bursts=0.0), 180),
+        drive(a, vitals(bpm=20.0, conf=0.0, rrv=0.45, motion=90.0, bursts=10.0,
+                        acv=0.8, since_burst=0.5), 60),
+    ]
+    for out in outs:
+        assert out.advisory.basis in BASIS_TEXT
+        d = out.advisory.as_dict()
+        assert d["basis_text"] == BASIS_TEXT[out.advisory.basis]
+        assert d["held_s"] >= 0.0
 
 
 def test_multiple_subjects_withdraw_the_green_light():

@@ -17,6 +17,9 @@ WorkingDirectory=/home/sentinel/sentinel/backend
 # (3000 -> 3001), so this is the only URL to set.
 Environment=RUVIEW_URL=http://localhost:3000
 Environment=SENTINEL_DB_PATH=/home/sentinel/sentinel-data/sentinel.db
+# Bench trials: always issue the policy's best decision, never INSUFFICIENT
+# EVIDENCE; weak evidence is still flagged per subject. Remove for evaluation.
+Environment=SENTINEL_ADVISORY__EVIDENCE_GATE=false
 Environment=PYTHONUNBUFFERED=1
 # RUVIEW_TOKEN: bearer for the sensing server's API. Current upstream images
 # refuse to start on 0.0.0.0 without RUVIEW_API_TOKEN; both read this file.

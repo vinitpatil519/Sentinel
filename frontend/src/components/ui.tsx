@@ -235,69 +235,64 @@ export function SegmentBar({
 }
 
 /**
- * Banded instrument tape. The scale is divided into the decision zones the
- * backend uses, each drawn in its own colour, with a pointer at the value —
- * so the reading is shown *against* the thresholds that turn it into a
- * decision, rather than as a bare fraction.
+ * Banded instrument scale. The scale is divided into the decision bands the
+ * backend uses, each named and drawn in its own colour, with a pointer at the
+ * value — so the reading is shown *against* the limits that turn it into a
+ * decision, rather than as a bare fraction. Only the band the pointer sits in
+ * is lit; the rest stay at a tint, so the scale reads as context.
  */
 export function ZoneTape({
   value,
   zones,
-  height = 16,
+  height = 18,
   uncertain,
 }: {
   value: number;
   /** Ascending upper bounds in 0..1; the last should be 1. */
   zones: { to: number; color: string; label: string }[];
   height?: number;
+  /** Draws the pointer unlit: a reading the decision does not rest on. */
   uncertain?: boolean;
 }) {
   const v = Math.max(0, Math.min(1, value));
   const active = zones.find((z) => v <= z.to) ?? zones[zones.length - 1];
+  const pointer = uncertain ? "var(--text-2)" : "var(--text-0)";
   let from = 0;
   return (
-    <div className="flex flex-col gap-1 px-[5px]">
-      <div className="relative" style={{ height: height + 8 }}>
-        {/* pointer */}
-        <span
-          className="absolute top-0 z-[2] -translate-x-1/2 transition-[left] duration-300"
-          style={{ left: `${v * 100}%` }}
-        >
-          <svg width="11" height="7" viewBox="0 0 11 7" aria-hidden>
-            <path d="M0 0h11L5.5 7z" fill="var(--text-0)" />
-          </svg>
-        </span>
-        <div className="absolute right-0 bottom-0 left-0 flex gap-[2px]" style={{ height }}>
+    <div className="flex flex-col gap-1">
+      <div className="relative pt-[6px]">
+        <div className="flex gap-px" style={{ height }}>
           {zones.map((z) => {
             const w = (z.to - from) * 100;
-            const isActive = z === active;
+            const lit = z === active && !uncertain;
             from = z.to;
             return (
               <span
                 key={z.label}
-                className="relative"
+                className="mono flex items-center justify-center overflow-hidden text-[9px] tracking-[0.08em]"
                 style={{
                   width: `${w}%`,
-                  background: `color-mix(in srgb, ${z.color} ${isActive ? 26 : 10}%, transparent)`,
-                  boxShadow: `inset 0 -2px 0 color-mix(in srgb, ${z.color} ${isActive ? 100 : 45}%, transparent)`,
+                  background: `color-mix(in srgb, ${z.color} ${lit ? 30 : 9}%, var(--bg-1))`,
+                  borderBottom: `2px solid color-mix(in srgb, ${z.color} ${lit ? 100 : 40}%, transparent)`,
+                  color: lit ? "var(--text-0)" : "var(--text-2)",
                 }}
-              />
+              >
+                {z.label}
+              </span>
             );
           })}
         </div>
-        {/* fill up to the value */}
+        {/* pointer: a cursor above the scale and a hairline through it */}
         <span
-          className={`absolute bottom-0 left-0 z-[1] transition-[width] duration-300 ${uncertain ? "hatch" : ""}`}
-          style={{
-            height,
-            width: `${v * 100}%`,
-            background: uncertain ? undefined : `color-mix(in srgb, ${active.color} 30%, transparent)`,
-          }}
-        />
-        <span
-          className="absolute bottom-0 z-[2] w-[2px] -translate-x-1/2 transition-[left] duration-300"
-          style={{ left: `${v * 100}%`, height: height + 2, background: "var(--text-0)", boxShadow: `0 0 8px ${active.color}` }}
-        />
+          className="absolute top-0 bottom-0 z-[2] flex -translate-x-1/2 flex-col items-center transition-[left] duration-300"
+          style={{ left: `${v * 100}%` }}
+          aria-hidden
+        >
+          <svg width="9" height="6" viewBox="0 0 9 6" className="flex-none">
+            <path d="M0 0h9L4.5 6z" fill={pointer} />
+          </svg>
+          <span className="w-[2px] flex-1" style={{ background: pointer, outline: "1px solid var(--bg-0)" }} />
+        </span>
       </div>
       <div className="relative h-3">
         {zones.slice(0, -1).map((z) => (

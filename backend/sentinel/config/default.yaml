@@ -31,6 +31,9 @@ advisory:
   approach_min_dwell_s: 45.0
   de_escalation_dwell_s: 12.0
   recent_burst_s: 10.0
+  # Withhold the advisory as INSUFFICIENT_EVIDENCE below min_evidence. Off for
+  # hardware bench trials: SENTINEL_ADVISORY__EVIDENCE_GATE=false
+  evidence_gate: true
 
 # state_model: loaded from config/state_model.yaml when present, which is what
 # scripts/calibrate_states.py writes. Absent → literature-seeded defaults in

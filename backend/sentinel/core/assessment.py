@@ -448,6 +448,24 @@ REASON_TEXT = {
     "STATE_UNSTABLE": "State posterior unstable over the last 15 s",
 }
 
+#: The single determinant of each decision — the policy branch that produced
+#: it. Reason codes list every modifier in play; the basis says which one rule
+#: the decision actually rests on, so the console never shows a restriction
+#: with nothing beneath it.
+BASIS_TEXT = {
+    "STATE_UNRESOLVED": "Behavioural state unresolved",
+    "EVIDENCE_BELOW_MINIMUM": "Evidence below the decision minimum",
+    "STATE_DISTRESSED": "Subject in distress — irregular or arrested respiration",
+    "AROUSAL_ABOVE_HOLD": "Readiness above the HOLD limit",
+    "AROUSAL_HOLD_BAND": "Readiness within the HOLD band",
+    "AROUSAL_CAUTION_BAND": "Readiness within the CAUTION band",
+    "SECOND_SUBJECT": "Readiness low, but a second subject is in the volume",
+    "NOT_ASLEEP": "Readiness low, but the subject is awake",
+    "SLEEP_DWELL_SHORT": "Asleep, but for less than the minimum dwell",
+    "SLEEP_DWELL_MET": "Asleep beyond the minimum dwell, readiness low",
+    "DE_ESCALATION_HOLD": "Standing advisory held until the relief persists",
+}
+
 
 @dataclass
 class PolicyConfig:
@@ -458,12 +476,24 @@ class PolicyConfig:
     approach_min_dwell_s: float = 45.0
     de_escalation_dwell_s: float = 12.0
     recent_burst_s: float = 10.0
+    #: Below ``min_evidence`` the advisory is withheld as INSUFFICIENT_EVIDENCE.
+    #: Turning the gate off issues the policy's best decision on any evidence,
+    #: still flagged WEAK_EVIDENCE — for bench trials on hardware, where the
+    #: question is what the model makes of real data. APPROACH still requires a
+    #: resolved ASLEEP state, so it cannot come from an unresolved one. The
+    #: evaluated safety figures hold only with the gate on.
+    evidence_gate: bool = True
 
     @classmethod
     def from_dict(cls, raw: dict | None) -> "PolicyConfig":
         cfg = cls()
         for k, v in (raw or {}).items():
-            if hasattr(cfg, k):
+            if not hasattr(cfg, k):
+                continue
+            if isinstance(getattr(cfg, k), bool):
+                # From the environment this arrives as text, and bool("false") is True.
+                setattr(cfg, k, v if isinstance(v, bool) else str(v).strip().lower() in ("1", "true", "yes", "on"))
+            else:
                 setattr(cfg, k, float(v))
         return cfg
 
@@ -476,6 +506,10 @@ class Advisory:
     reasons: list[str]
     quiet_window_s: float | None    # predicted seconds of continued low arousal
     stability: float                # 0..1 posterior stability over the window
+    basis: str = ""                 # BASIS_TEXT key: the rule the decision rests on
+    held_s: float = 0.0             # seconds the standing decision has stood
+    pending: Decision | None = None     # more permissive decision awaiting dwell
+    pending_in_s: float | None = None   # seconds until it applies, if it holds
 
     def as_dict(self) -> dict:
         return {
@@ -486,6 +520,11 @@ class Advisory:
             "reason_text": [REASON_TEXT.get(r, r) for r in self.reasons],
             "quiet_window_s": round(self.quiet_window_s, 1) if self.quiet_window_s is not None else None,
             "stability": round(self.stability, 3),
+            "basis": self.basis,
+            "basis_text": BASIS_TEXT.get(self.basis, self.basis),
+            "held_s": round(self.held_s, 1),
+            "pending": self.pending.value if self.pending is not None else None,
+            "pending_in_s": round(self.pending_in_s, 1) if self.pending_in_s is not None else None,
         }
 
 
@@ -557,11 +596,12 @@ class ApproachPolicy:
         if vitals.respiration.confidence <= 0.0:
             reasons.append("NO_RESPIRATION_LOCK")
 
-        if est.state is None:
+        gated = self.cfg.evidence_gate
+        if est.state is None and gated:
             reasons.append("WEAK_EVIDENCE")
-            raw = Decision.INSUFFICIENT_EVIDENCE
+            raw, basis = Decision.INSUFFICIENT_EVIDENCE, "STATE_UNRESOLVED"
         elif est.state is State.DISTRESSED:
-            raw = Decision.DO_NOT_APPROACH
+            raw, basis = Decision.DO_NOT_APPROACH, "STATE_DISTRESSED"
         elif arousal <= self.cfg.approach_max_arousal:
             if subject_count > 1:
                 # An advisory about approaching a subject is in practice an
@@ -569,19 +609,24 @@ class ApproachPolicy:
                 # volume is a hazard whatever this subject is doing, and their
                 # vitals cannot be attributed with the same confidence — so a
                 # green light is withheld on principle, not on measurement.
-                raw = Decision.CAUTION
+                raw, basis = Decision.CAUTION, "SECOND_SUBJECT"
             elif est.state is State.ASLEEP and est.dwell_s >= self.cfg.approach_min_dwell_s:
-                raw = Decision.APPROACH
+                raw, basis = Decision.APPROACH, "SLEEP_DWELL_MET"
                 reasons.append("SLEEP_CONSISTENT")
                 reasons.append("LOW_AROUSAL_SUSTAINED")
+            elif est.state is State.ASLEEP:
+                raw, basis = Decision.CAUTION, "SLEEP_DWELL_SHORT"
+            elif est.state is None:
+                # Only reachable with the evidence gate off.
+                raw, basis = Decision.CAUTION, "STATE_UNRESOLVED"
             else:
-                raw = Decision.CAUTION
+                raw, basis = Decision.CAUTION, "NOT_ASLEEP"
         elif arousal <= self.cfg.caution_max_arousal:
-            raw = Decision.CAUTION
+            raw, basis = Decision.CAUTION, "AROUSAL_CAUTION_BAND"
         elif arousal <= self.cfg.hold_max_arousal:
-            raw = Decision.HOLD
+            raw, basis = Decision.HOLD, "AROUSAL_HOLD_BAND"
         else:
-            raw = Decision.DO_NOT_APPROACH
+            raw, basis = Decision.DO_NOT_APPROACH, "AROUSAL_ABOVE_HOLD"
             if est.state is State.ACTIVE:
                 reasons.append("ACTIVE_MOTION")
 
@@ -591,10 +636,18 @@ class ApproachPolicy:
         # danger signal for want of confidence is the more dangerous error.
         if evidence < self.cfg.min_evidence:
             reasons.append("WEAK_EVIDENCE")
-            if DECISION_RANK[raw] < DECISION_RANK[Decision.INSUFFICIENT_EVIDENCE]:
-                raw = Decision.INSUFFICIENT_EVIDENCE
+            if gated and DECISION_RANK[raw] < DECISION_RANK[Decision.INSUFFICIENT_EVIDENCE]:
+                raw, basis = Decision.INSUFFICIENT_EVIDENCE, "EVIDENCE_BELOW_MINIMUM"
 
         decision = self._apply_hysteresis(ts_ms, raw, reasons)
+        pending = pending_in_s = None
+        if decision is not raw:
+            # Held: the decision now rests on the hysteresis rule, not on the
+            # reading that first produced it.
+            basis = "DE_ESCALATION_HOLD"
+            pending = self._relief_target
+            held = (ts_ms - self._relief_since_ms) / 1000.0
+            pending_in_s = max(0.0, self.cfg.de_escalation_dwell_s - held)
         confidence = dsp.clamp(0.5 * est.confidence + 0.3 * evidence + 0.2 * stability, 0.0, 1.0)
         return Advisory(
             decision=decision,
@@ -603,6 +656,10 @@ class ApproachPolicy:
             reasons=list(dict.fromkeys(reasons)),
             quiet_window_s=self._quiet_window(decision, vitals, est),
             stability=stability,
+            basis=basis,
+            held_s=(ts_ms - self._decided_ms) / 1000.0,
+            pending=pending,
+            pending_in_s=pending_in_s,
         )
 
     def _apply_hysteresis(self, ts_ms: int, raw: Decision, reasons: list[str]) -> Decision:

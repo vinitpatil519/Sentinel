@@ -126,7 +126,7 @@ export default function System() {
                 <span className="label">Advisory thresholds</span>
                 <div className="mt-1 grid grid-cols-2 gap-x-5">
                   {Object.entries(caps.advisory).map(([k, v]) => (
-                    <Field key={k} label={k.replaceAll("_", " ")} value={num(v, 2)} />
+                    <Field key={k} label={k.replaceAll("_", " ")} value={typeof v === "boolean" ? (v ? "ON" : "OFF") : num(v, 2)} />
                   ))}
                 </div>
               </div>

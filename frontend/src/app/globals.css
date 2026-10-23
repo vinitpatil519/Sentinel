@@ -572,6 +572,33 @@ kbd,
   animation: deny-edge 1.4s ease-in-out infinite;
 }
 
+/* Advisory annunciator: a lit legend block, the way a caution/warning panel
+   shows a master warning. Solid fill, dark legend, chamfered like the panels.
+   It flashes three times when the decision changes (the element is remounted
+   per decision) and is then steady; a light that never stops flashing stops
+   being read. */
+.annunciator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 8px 14px;
+  color: var(--bg-0);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  animation: annunciate 1.2s steps(1) 1;
+}
+.annunciator-unlit {
+  color: var(--text-1);
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-bright);
+}
+@keyframes annunciate {
+  0%, 33%, 66% { filter: none; }
+  16%, 50%, 83% { filter: brightness(0.4); }
+}
+
 @keyframes row-in {
   from { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   to { background: transparent; }
@@ -617,6 +644,7 @@ kbd,
   .pulse,
   .blink,
   .deny-edge,
+  .annunciator,
   .row-in,
   .shake,
   .rise,

@@ -844,7 +844,7 @@ function makeLabelTexture(
 
   ctx.fillStyle = accent;
   ctx.font = `700 34px ${fonts.display}`;
-  drawSpaced(ctx, DECISION_TEXT[decision], 26, 92, 3);
+  drawSpaced(ctx, track.advisory ? DECISION_TEXT[decision] : "--", 26, 92, 3);
 
   ctx.fillStyle = "#9eaaab";
   ctx.font = `600 24px ${fonts.display}`;
